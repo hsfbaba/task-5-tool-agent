@@ -43,7 +43,7 @@ python data/download.py
 
 | 文件 | 必须导出 |
 |---|---|
-| `src/tools/{name}.py` | `TOOL_SCHEMA: dict`（OpenAI function calling 格式）、`def run(args: dict) -> str` |
+| `src/tools/{name}.py` | `TOOL_SCHEMA: dict`（OpenAI function calling 格式）、`def run(args: dict) -> str`；自检按名导入这 4 个工具模块：`calculator`、`python_sandbox`、`file_search`、`wiki` |
 | `src/agent.py` | `class ReActAgent` 含 `run(task: str) -> AgentTrace`；`AgentTrace` 是 dict 含 `steps`、`final_answer`、`success: bool` |
 
 ## 自检

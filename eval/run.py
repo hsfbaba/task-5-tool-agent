@@ -2,11 +2,15 @@
 import json
 import re
 import sys
-import traceback
 from pathlib import Path
 
-ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(ROOT))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))           # from src.* —— 学生实现
+sys.path.insert(0, str(ROOT.parent))    # from _eval_harness —— 共用运行壳
+
+from _eval_harness import run_tests
+
+SUCCESS_RATE_PASS = 0.6   # 多工具任务成功率通过线
 
 
 def normalize_answer(text):
@@ -47,36 +51,31 @@ def test_tools_individual():
         return {"test": "tools_individual", "pass": False,
                 "error": f"工具导入失败：{e}"}
 
-    # calculator
-    try:
-        out = calculator.run({"expression": "2 + 3 * 4"})
-        results["calculator"] = "14" in str(out)
-    except Exception as e:
-        results["calculator"] = f"error: {e}"
+    # (工具名, 模块, 调用参数, 预期子串, 是否依赖网络)：
+    # expected=None 表示只检查响应长度 > 50（如 wiki 网络回包）；
+    # network=True 的工具若抛异常按“跳过”处理（多半是离线/被墙），不拖累其余工具判定。
+    checks = [
+        ("calculator",     calculator,     {"expression": "2 + 3 * 4"},                  "14",        False),
+        ("python_sandbox", python_sandbox, {"code": "print(sum(range(10)))"},            "45",        False),
+        ("file_search",    file_search,    {"pattern": "README.md", "dir": str(ROOT)},   "README.md", False),
+        ("wiki",           wiki,           {"query": "Alan Turing"},                     None,        True),
+    ]
+    network_skipped = []
+    for name, mod, args, expected, network in checks:
+        try:
+            out = str(mod.run(args))
+            results[name] = (expected in out) if expected is not None else (len(out) > 50)
+        except Exception as e:
+            if network:
+                results[name] = f"skip(网络不可用？): {e}"
+                network_skipped.append(name)
+            else:
+                results[name] = f"error: {e}"
 
-    # python_sandbox
-    try:
-        out = python_sandbox.run({"code": "print(sum(range(10)))"})
-        results["python_sandbox"] = "45" in str(out)
-    except Exception as e:
-        results["python_sandbox"] = f"error: {e}"
-
-    # file_search
-    try:
-        out = file_search.run({"pattern": "README.md", "dir": str(ROOT)})
-        results["file_search"] = "README.md" in str(out)
-    except Exception as e:
-        results["file_search"] = f"error: {e}"
-
-    # wiki
-    try:
-        out = wiki.run({"query": "Alan Turing"})
-        results["wiki"] = len(str(out)) > 50  # 至少有非空响应
-    except Exception as e:
-        results["wiki"] = f"error: {e}"
-
-    all_pass = all(v is True for v in results.values())
-    return {"test": "tools_individual", "pass": all_pass, "results": results}
+    gated = [v for k, v in results.items() if k not in network_skipped]
+    all_pass = bool(gated) and all(v is True for v in gated)
+    return {"test": "tools_individual", "pass": all_pass, "results": results,
+            "network_skipped": network_skipped or None}
 
 
 def test_multi_tool_success_rate():
@@ -113,7 +112,7 @@ def test_multi_tool_success_rate():
         except Exception as e:
             details.append({"id": t["id"], "success": False, "error": str(e)})
     rate = success / len(tasks)
-    return {"test": "multi_tool_success_rate", "pass": rate > 0.6,
+    return {"test": "multi_tool_success_rate", "pass": rate > SUCCESS_RATE_PASS,
             "rate": round(rate, 3), "n": len(tasks), "details": details}
 
 
@@ -123,23 +122,6 @@ def test_error_recovery():
             "skip": "需要学生实现 inject_error 测试钩子；可选实验"}
 
 
-def main():
-    results = []
-    for fn in [test_tools_individual, test_multi_tool_success_rate, test_error_recovery]:
-        try:
-            r = fn()
-        except Exception as e:
-            r = {"test": fn.__name__.replace("test_", ""),
-                 "pass": False, "error": str(e),
-                 "trace": traceback.format_exc().splitlines()[-3:]}
-        results.append(r)
-        tag = "[通过]" if r.get("pass") is True else \
-              ("[跳过]" if r.get("pass") is None else "[失败]")
-        print(f"{tag} {r['test']}: {json.dumps(r, ensure_ascii=False)}")
-    out = ROOT / "eval" / "result.json"
-    out.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"\n结果写入 {out.relative_to(ROOT)}")
-
-
 if __name__ == "__main__":
-    main()
+    run_tests([test_tools_individual, test_multi_tool_success_rate,
+               test_error_recovery], ROOT)

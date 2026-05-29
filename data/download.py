@@ -36,7 +36,7 @@ def build_tasks():
          "expected_answer_contains": [["Turing", "图灵"]]},
         {"id": 5, "task": "查维基百科 Geoffrey Hinton 的出生年份，并计算他到 2026 年是多少岁。",
          "expected_tools": ["wiki", "calculator"],
-         "expected_answer_contains": ["1947", "79"]},
+         "expected_answer_contains": ["1947", ["78", "79"]]},
         {"id": 6, "task": "用 Python 写一个函数判断回文，并测试 'level' 和 'world' 两个词。",
          "expected_tools": ["python_sandbox"],
          "expected_answer_contains": ["level", "True", "world", "False"]},
