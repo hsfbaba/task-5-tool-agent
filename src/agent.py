@@ -18,6 +18,8 @@ from src.tools.file_search import TOOL_SCHEMA as FILE_SCHEMA
 from src.tools.file_search import run as file_run
 from src.tools.python_sandbox import TOOL_SCHEMA as SANDBOX_SCHEMA
 from src.tools.python_sandbox import run as sandbox_run
+from src.tools.weather import TOOL_SCHEMA as WEATHER_SCHEMA
+from src.tools.weather import run as weather_run
 from src.tools.wiki import TOOL_SCHEMA as WIKI_SCHEMA
 from src.tools.wiki import run as wiki_run
 
@@ -26,6 +28,7 @@ _TOOLS: dict[str, dict[str, Any]] = {
     "python_sandbox": {"schema": SANDBOX_SCHEMA,  "run": sandbox_run},
     "file_search":    {"schema": FILE_SCHEMA,     "run": file_run},
     "wiki":           {"schema": WIKI_SCHEMA,     "run": wiki_run},
+    "weather":        {"schema": WEATHER_SCHEMA,  "run": weather_run},
 }
 
 # ═══════════════════════════════════════════════════════════════════════════
